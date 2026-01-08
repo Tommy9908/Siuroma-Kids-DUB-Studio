@@ -1,17 +1,17 @@
+// src/app/page.tsx
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import { 
-  RotateCcw, Play, Pause, Square, Download, Volume2, VolumeX 
+  RotateCcw, Play, Pause, Square, Download, Volume2, VolumeX, 
+  Smartphone, Monitor, Layout, Type
 } from 'lucide-react';
 
 // Components
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ActorGrid } from "@/components/ActorGrid";
 import { Header } from "@/components/Header";
-import { DeviceSettings } from "@/components/DeviceSettings";
-// Import the new SoundBoard component
 import { SoundBoard } from "@/components/SoundBoard";
 
 // Hooks & Types
@@ -24,44 +24,59 @@ export default function DubbingStudio() {
   const [actorCount, setActorCount] = useState<ActorCount>(1);
   const [sourceMode, setSourceMode] = useState<SourceMode>('file');
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
-
-  // Stores the selected Camera/Mic for each actor
+  
+  // Device Configuration State
   const [deviceConfig, setDeviceConfig] = useState<ActorDeviceConfig>({});
 
-  // Audio state for Reference Video
+  // Audio state
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Watermark State
+  const [watermarkText, setWatermarkText] = useState("Dubbing Studio");
+  
+  // View Mode
   const [viewMode, setViewMode] = useState<'studio' | 'review'>('studio');
+  
+  // Review Mode State
+  const [previewVersion, setPreviewVersion] = useState('main'); // 'main' | 'focus-0' | 'focus-1'...
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
   // Video progress state
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  // Header props (placeholders/state)
-  const [selectedDeviceId, setSelectedDeviceId] = useState("");
-  const [hdmiVolume, setHdmiVolume] = useState(0);
-
   // --- Refs & Hooks ---
   const videoRef = useRef<HTMLVideoElement>(null);
   const webcamRefs = useRef<(Webcam | null)[]>([]);
 
-  // Destructure refreshDevices to pass it to settings
+  // Media Devices Hook
   const { devices, refreshDevices, isScanning } = useMediaDevices();
 
+  // Recorder Hook
   const {
     startRecording,
     stopRecording,
     pauseRecording,
     resumeRecording,
-    downloadUrls, // UPDATED
+    downloadUrls,
     setDownloadUrls,
     isRecording,
-    isPaused
-  } = useGridRecorder(webcamRefs, videoRef, actorCount, isVideoMuted);
+    isPaused,
+    audioContext,
+    audioDestination
+  } = useGridRecorder(webcamRefs, videoRef, actorCount, isVideoMuted, watermarkText);
 
-  // --- Video Handlers ---
+  // --- Video Handlers (Restored) ---
+
+  const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleVideoTimeUpdate = () => {
     if (videoRef.current) {
       const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -83,19 +98,11 @@ export default function DubbingStudio() {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // --- Logic ---
 
   // 1. Countdown Logic
   useEffect(() => {
     if (countdown === null) return;
-
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
@@ -113,12 +120,12 @@ export default function DubbingStudio() {
 
   // 2. Watch for Recording Completion to Switch Views
   useEffect(() => {
-    if (downloadUrls) {
+    if (downloadUrls && Object.keys(downloadUrls).length > 0) {
       setViewMode('review');
     }
   }, [downloadUrls]);
 
-  const [previewVersion, setPreviewVersion] = useState('main');
+  // --- Handlers ---
 
   const initiateRecording = () => {
     if (!videoSrc) return alert("Please upload a video reference first.");
@@ -129,15 +136,17 @@ export default function DubbingStudio() {
     videoRef.current?.pause();
     setIsPlaying(false);
     stopRecording();
-    // The useEffect above will handle switching to 'review' when data is ready
   };
 
   const handleDiscard = () => {
     setDownloadUrls(null);
     setViewMode('studio');
+    // Reset video to start
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
+      setVideoProgress(0);
     }
+    setPreviewVersion('main');
   };
 
   // Header Handlers
@@ -148,220 +157,272 @@ export default function DubbingStudio() {
     }
   };
 
-  // --- Review View ---
+  // --- Render ---
+
+  // REVIEW VIEW
   if (viewMode === 'review') {
-    const currentUrl = downloadUrls ? downloadUrls[previewVersion] : null;
+    const currentKey = `${orientation}-${previewVersion}`;
+    const currentUrl = downloadUrls ? downloadUrls[currentKey] : null;
 
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-8 gap-6">
-        <h2 className="text-3xl font-bold mb-4">Recording Review</h2>
-        
-        {/* Version Selector */}
-        <div className="flex gap-2 overflow-x-auto max-w-full pb-2">
-          <button 
-            onClick={() => setPreviewVersion('main')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition ${
-              previewVersion === 'main' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'
-            }`}
-          >
-            Main Mix (Equal)
+      <div className="min-h-screen bg-black text-white flex flex-col p-6">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+            Review Recording
+          </h1>
+          <button onClick={handleDiscard} className="text-gray-400 hover:text-white flex items-center gap-2">
+            <RotateCcw size={16} /> Discard & New
           </button>
-          {Array.from({ length: actorCount }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setPreviewVersion(`focus-${i}`)}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition ${
-                previewVersion === `focus-${i}` ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'
-              }`}
-            >
-              Focus Actor {i + 1}
-            </button>
-          ))}
-        </div>
+        </header>
 
-        {currentUrl && (
-          <div className="w-full max-w-4xl bg-black rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
-            <video src={currentUrl} controls className="w-full h-auto" />
-          </div>
-        )}
-
-        <div className="flex gap-4 mt-6">
-          <button 
-            onClick={handleDiscard}
-            className="px-8 py-3 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg font-bold transition flex items-center gap-2"
-          >
-            <RotateCcw size={20} />
-            Discard All
-          </button>
+        <div className="flex-1 flex flex-col items-center gap-6">
           
-          {/* Save Current Version */}
-          {currentUrl && (
-             <a 
-               href={currentUrl} 
-               download={`dubbing-${previewVersion}.webm`}
-               className="px-8 py-3 bg-green-600 text-white hover:bg-green-500 rounded-lg font-bold transition flex items-center gap-2"
-             >
-               <Download size={20} />
-               Save This Version
-             </a>
-          )}
+          {/* Main Preview Player */}
+          <div className={`relative bg-gray-900 border border-gray-800 rounded-lg overflow-hidden shadow-2xl transition-all duration-500
+             ${orientation === 'landscape' ? 'aspect-video w-full max-w-4xl' : 'aspect-[9/16] h-[70vh]'}`}>
+            {currentUrl ? (
+              <video 
+                src={currentUrl} 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500">
+                Video not found for this configuration.
+              </div>
+            )}
+          </div>
+
+          {/* Controls Container */}
+          <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col gap-4 w-full max-w-4xl">
+            
+            <div className="flex flex-wrap items-center justify-between gap-4">
+               {/* Orientation Toggles */}
+               <div className="flex bg-gray-800 rounded-lg p-1">
+                 <button
+                   onClick={() => setOrientation('landscape')}
+                   className={`px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition ${orientation === 'landscape' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                 >
+                   <Monitor size={16} /> Landscape
+                 </button>
+                 <button
+                   onClick={() => setOrientation('portrait')}
+                   className={`px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition ${orientation === 'portrait' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                 >
+                   <Smartphone size={16} /> Portrait
+                 </button>
+               </div>
+
+               {/* Download Button */}
+               {currentUrl && (
+                 <a 
+                   href={currentUrl} 
+                   download={`recording-${currentKey}.webm`}
+                   className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center gap-2 font-medium transition"
+                 >
+                   <Download size={18} /> Save Video
+                 </a>
+               )}
+            </div>
+
+            <div className="h-px bg-gray-800 w-full" />
+
+            {/* Version Selectors */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => setPreviewVersion('main')}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap border transition ${
+                  previewVersion === 'main' 
+                    ? 'bg-gray-800 border-blue-500 text-blue-400' 
+                    : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500'
+                }`}
+              >
+                <Layout size={16} /> 
+                Main Mix
+              </button>
+
+              {Array.from({ length: actorCount }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPreviewVersion(`focus-${i}`)}
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap border transition ${
+                    previewVersion === `focus-${i}`
+                      ? 'bg-gray-800 border-blue-500 text-blue-400' 
+                      : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white">
+                    {i + 1}
+                  </div>
+                  Focus Actor {i + 1}
+                </button>
+              ))}
+            </div>
+
+          </div>
         </div>
       </div>
     );
   }
 
-  // --- Studio View ---
+  // STUDIO VIEW
   return (
-    <div className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
-      
+    <div className="min-h-screen bg-black text-white flex flex-col overflow-hidden">
       {/* Countdown Overlay */}
       {countdown !== null && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center pointer-events-none">
-          <div className="text-[12rem] font-black text-white animate-pulse">
-            {countdown === 0 ? "GO!" : countdown}
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+           <div className="text-9xl font-black text-white animate-bounce">
+             {countdown === 0 ? "GO!" : countdown}
+           </div>
         </div>
       )}
 
       {/* Header */}
       <Header 
-        actorCount={actorCount}
-        setActorCount={setActorCount}
-        onFileImport={onFileImport}
-        sourceMode={sourceMode}
-        setSourceMode={setSourceMode}
-        // Passthrough props for device settings in header (if you move it there)
-        devices={devices}
-        isScanning={isScanning}
-        refreshDevices={refreshDevices}
-        selectedDeviceId={selectedDeviceId}
-        setSelectedDeviceId={setSelectedDeviceId}
-        hdmiVolume={hdmiVolume}
-        setHdmiVolume={setHdmiVolume}
+         sourceMode={sourceMode}
+         setSourceMode={setSourceMode}
+         actorCount={actorCount}
+         setActorCount={setActorCount}
+         onFileImport={onFileImport}
+         devices={devices}
+         config={deviceConfig}
+         setConfig={setDeviceConfig}
+         refreshDevices={refreshDevices}
+         isScanning={isScanning}
       />
 
-      <main className="flex-1 p-4 flex gap-4 overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         {/* LEFT: Reference Video */}
-        <div className="flex-1 flex flex-col gap-4">
-          <div className="flex-1 bg-gray-900 rounded-xl overflow-hidden relative">
-            {!videoSrc && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                <div className="w-16 h-16 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center mb-4">
-                  <Play size={32} className="opacity-50" />
-                </div>
-                <p>Import a video to start dubbing</p>
+        <div className="w-1/2 border-r border-gray-800 relative bg-gray-900 flex flex-col">
+          {!videoSrc ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-4">
+              <div className="p-4 rounded-full bg-gray-800/50">
+                <Download size={48} className="opacity-50" />
               </div>
-            )}
-            
-            <VideoPlayer 
-              ref={videoRef} 
-              fileSrc={videoSrc}
-              onTimeUpdate={handleVideoTimeUpdate}
-              onLoadedMetadata={handleVideoLoadedMetadata}
-              isMuted={isVideoMuted}
-            />
-          </div>
-
-          {/* Controls Section with Slider */}
-          {videoSrc && (
-            <div className="bg-gray-900 p-4 rounded-xl flex items-center gap-4">
-               {/* Progress Bar */}
-               <span className="text-xs font-mono text-gray-400 w-12 text-right">
-                 {formatTime((videoProgress / 100) * videoDuration)}
-               </span>
-               <input 
-                 type="range" 
-                 min="0" 
-                 max="100" 
-                 value={videoProgress}
-                 onChange={handleVideoSeek}
-                 className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-               />
-               <span className="text-xs font-mono text-gray-400 w-12">
-                 {formatTime(videoDuration)}
-               </span>
-
-               <div className="w-px h-8 bg-gray-700 mx-2" />
-
-               {/* Control Buttons */}
-               
-               {/* Mute Toggle */}
-               <button 
-                 onClick={() => setIsVideoMuted(!isVideoMuted)}
-                 className={`p-4 rounded-full transition ${
-                    isVideoMuted ? 'bg-red-600/20 text-red-400' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                 }`}
-                 title={isVideoMuted ? "Unmute Reference Video" : "Mute Reference Video"}
-               >
-                 {isVideoMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-               </button>
-
-               {!isRecording ? (
-                 <button 
-                   onClick={initiateRecording}
-                   className="flex-1 bg-red-600 hover:bg-red-500 text-white p-4 rounded-full font-bold transition flex items-center justify-center gap-2"
-                 >
-                   <div className="w-4 h-4 rounded-full bg-white animate-pulse" />
-                   START RECORDING
-                 </button>
-               ) : (
-                 <>
-                   <button 
-                     onClick={() => {
-                        if (isPaused) {
-                          resumeRecording();
-                          videoRef.current?.play();
-                        } else {
-                          pauseRecording();
-                          videoRef.current?.pause();
-                        }
-                     }}
-                     className="p-4 bg-gray-800 hover:bg-gray-700 rounded-full transition"
-                   >
-                     {isPaused ? <Play size={24} /> : <Pause size={24} />}
-                   </button>
-                   
-                   <button 
-                     onClick={handleStop}
-                     className="flex-1 bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-full font-bold transition flex items-center justify-center gap-2"
-                   >
-                     <Square size={20} className="fill-current" />
-                     STOP
-                   </button>
-                 </>
-               )}
+              <p>Import a video to start dubbing</p>
             </div>
+          ) : (
+            <>
+               <div className="flex-1 relative">
+                 <video
+                   ref={videoRef}
+                   src={videoSrc}
+                   className="w-full h-full object-contain"
+                   muted={isVideoMuted}
+                   onTimeUpdate={handleVideoTimeUpdate}
+                   onLoadedMetadata={handleVideoLoadedMetadata}
+                 />
+                 {/* Floating Watermark Preview */}
+                 {watermarkText && (
+                   <div className="absolute bottom-4 right-4 text-white/50 text-sm font-bold pointer-events-none drop-shadow-md z-10">
+                     {watermarkText}
+                   </div>
+                 )}
+               </div>
+               
+               {/* Controls Bar */}
+               <div className="border-t border-gray-800 bg-black/90 p-4 flex flex-col gap-4">
+                  
+                  {/* Watermark Input */}
+                  <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
+                    <Type size={16} className="text-gray-500" />
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Watermark</span>
+                    <input 
+                      type="text" 
+                      value={watermarkText}
+                      onChange={(e) => setWatermarkText(e.target.value)}
+                      placeholder="Enter watermark text..."
+                      className="bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded px-3 py-1 focus:outline-none focus:border-blue-500 focus:text-white transition w-full"
+                    />
+                  </div>
+
+                  {/* Progress Bar Row */}
+                  <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
+                    <span>{formatTime((videoProgress / 100) * videoDuration)}</span>
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={videoProgress}
+                        onChange={handleVideoSeek}
+                        className="flex-1 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+                        disabled={isRecording}
+                    />
+                    <span>{formatTime(videoDuration)}</span>
+                  </div>
+
+                  {/* Buttons Row (Centered Layout) */}
+                  <div className="flex items-center justify-between">
+                      {/* Left Spacer */}
+                      <div className="flex-1"></div>
+
+                      {/* Center Controls Group */}
+                      <div className="flex items-center gap-6">
+                          <button 
+                            onClick={() => setIsVideoMuted(!isVideoMuted)}
+                            className={`p-3 rounded-full transition ${
+                                isVideoMuted ? 'bg-red-600/20 text-red-400' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                            }`}
+                            title={isVideoMuted ? "Unmute Reference Video" : "Mute Reference Video"}
+                          >
+                            {isVideoMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                          </button>
+
+                          {!isRecording ? (
+                            <button 
+                              onClick={initiateRecording}
+                              className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-full flex items-center gap-2 transition shadow-lg shadow-red-900/20 transform hover:scale-105 active:scale-95"
+                            >
+                              <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+                              START RECORDING
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={isPaused ? resumeRecording : pauseRecording}
+                                className="p-3 bg-gray-800 hover:bg-gray-700 rounded-full text-white transition"
+                              >
+                                {isPaused ? <Play size={20} fill="currentColor" /> : <Pause size={20} fill="currentColor" />}
+                              </button>
+                              <button 
+                                onClick={handleStop}
+                                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-red-500 font-bold rounded-full flex items-center gap-2 transition border border-red-500/20"
+                              >
+                                <Square size={16} fill="currentColor" /> STOP
+                              </button>
+                            </div>
+                          )}
+                      </div>
+
+                      {/* Right Spacer */}
+                      <div className="flex-1"></div>
+                  </div>
+               </div>
+            </>
           )}
         </div>
 
-        {/* RIGHT: Actor Grid & Settings & SoundBoard */}
-        <div className="flex-1 flex flex-col h-full gap-4 relative">
-          {/* Main Actor Grid Area - Takes available space */}
-          <div className="flex-1 min-h-0">
-            <ActorGrid
-              count={actorCount}
-              isRecording={isRecording}
-              deviceConfig={deviceConfig}
-              webcamRefs={webcamRefs}
+        {/* RIGHT: Actor Grid & SoundBoard */}
+        <div className="w-1/2 flex flex-col bg-gray-950">
+          <div className="flex-1 relative overflow-hidden">
+             <ActorGrid 
+               count={actorCount}
+               webcamRefs={webcamRefs}
+               deviceConfig={deviceConfig}
+             />
+          </div>
+          
+          {/* Constrain SoundBoard Height: Fixed height (h-56 or h-64) ensures it doesn't push up. */}
+          <div className="h-56 border-t border-gray-800 bg-gray-900/50 p-4 shrink-0">
+            <SoundBoard 
+              audioContext={audioContext} 
+              audioDestination={audioDestination} 
             />
           </div>
-
-          {/* Sound Board - Fixed height at bottom */}
-          <div className="flex-none">
-            <SoundBoard />
-          </div>
-
-          {/* Device Settings Button (Floating) */}
-          <DeviceSettings 
-             devices={devices} 
-             refreshDevices={refreshDevices}
-             isScanning={isScanning}
-             actorCount={actorCount}
-             deviceConfig={deviceConfig}
-             setDeviceConfig={setDeviceConfig}
-          />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

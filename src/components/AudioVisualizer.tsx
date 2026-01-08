@@ -9,10 +9,10 @@ interface AudioVisualizerProps {
 
 export function AudioVisualizer({ stream, isMuted }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-  const analyserRef = useRef<AnalyserNode>();
-  const sourceRef = useRef<MediaStreamAudioSourceNode>();
-  const audioContextRef = useRef<AudioContext>();
+  const animationRef = useRef<number>(null);
+  const analyserRef = useRef<AnalyserNode>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode>(null);
+  const audioContextRef = useRef<AudioContext>(null);
 
   useEffect(() => {
     // 1. Safety check: Ensure stream exists AND has at least one audio track
