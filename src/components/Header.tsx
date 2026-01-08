@@ -1,3 +1,4 @@
+// src/components/Header.tsx
 import React from 'react';
 import { Upload, Users } from 'lucide-react';
 import { SourceMode, ActorCount, ActorDeviceConfig } from '@/types';
@@ -11,12 +12,10 @@ interface HeaderProps {
   setActorCount: (count: ActorCount) => void;
   onFileImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   
-  // Props for DeviceSettings
   devices: DeviceList;
   config: ActorDeviceConfig;
   setConfig: React.Dispatch<React.SetStateAction<ActorDeviceConfig>>;
   
-  // Other props passed from page (keeping for compatibility)
   isScanning?: boolean;
   refreshDevices?: () => void;
   selectedDeviceId?: string;
@@ -76,7 +75,7 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Device Settings Component */}
+        {/* Only Device Settings remains here */}
         <DeviceSettings 
             devices={devices} 
             actorCount={actorCount}

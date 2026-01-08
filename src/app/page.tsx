@@ -1,11 +1,10 @@
-// src/app/page.tsx
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import Webcam from "react-webcam";
 import { 
   RotateCcw, Play, Pause, Square, Download, Volume2, VolumeX, 
-  Smartphone, Monitor, Layout, Type
+  Smartphone, Monitor, Layout, Maximize
 } from 'lucide-react';
 
 // Components
@@ -33,14 +32,15 @@ export default function DubbingStudio() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Watermark State
-  const [watermarkText, setWatermarkText] = useState("Dubbing Studio");
+  // Watermark State (Preset Image Only)
+  // Ensure this file exists in your public/images folder
+  const [watermarkImage] = useState<string | null>("/images/watermark.png");
   
   // View Mode
   const [viewMode, setViewMode] = useState<'studio' | 'review'>('studio');
   
   // Review Mode State
-  const [previewVersion, setPreviewVersion] = useState('main'); // 'main' | 'focus-0' | 'focus-1'...
+  const [previewVersion, setPreviewVersion] = useState('main'); 
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
   // Video progress state
@@ -66,10 +66,9 @@ export default function DubbingStudio() {
     isPaused,
     audioContext,
     audioDestination
-  } = useGridRecorder(webcamRefs, videoRef, actorCount, isVideoMuted, watermarkText);
+  } = useGridRecorder(webcamRefs, videoRef, actorCount, isVideoMuted, watermarkImage, deviceConfig);
 
-  // --- Video Handlers (Restored) ---
-
+  // --- Video Handlers ---
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -99,7 +98,6 @@ export default function DubbingStudio() {
   };
 
   // --- Logic ---
-
   // 1. Countdown Logic
   useEffect(() => {
     if (countdown === null) return;
@@ -107,7 +105,6 @@ export default function DubbingStudio() {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      // Countdown finished -> Start
       setCountdown(null);
       if (videoRef.current) {
         videoRef.current.currentTime = 0;
@@ -118,7 +115,7 @@ export default function DubbingStudio() {
     }
   }, [countdown, startRecording]);
 
-  // 2. Watch for Recording Completion to Switch Views
+  // 2. Watch for Recording Completion
   useEffect(() => {
     if (downloadUrls && Object.keys(downloadUrls).length > 0) {
       setViewMode('review');
@@ -126,7 +123,6 @@ export default function DubbingStudio() {
   }, [downloadUrls]);
 
   // --- Handlers ---
-
   const initiateRecording = () => {
     if (!videoSrc) return alert("Please upload a video reference first.");
     setCountdown(3);
@@ -141,7 +137,6 @@ export default function DubbingStudio() {
   const handleDiscard = () => {
     setDownloadUrls(null);
     setViewMode('studio');
-    // Reset video to start
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       setVideoProgress(0);
@@ -149,12 +144,23 @@ export default function DubbingStudio() {
     setPreviewVersion('main');
   };
 
-  // Header Handlers
   const onFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setVideoSrc(URL.createObjectURL(file));
     }
+  };
+
+  const handleDownloadAll = () => {
+    if (!downloadUrls) return;
+    Object.entries(downloadUrls).forEach(([key, url]) => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recording-${key}.mp4`; 
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
   };
 
   // --- Render ---
@@ -177,8 +183,6 @@ export default function DubbingStudio() {
         </header>
 
         <div className="flex-1 flex flex-col items-center gap-6">
-          
-          {/* Main Preview Player */}
           <div className={`relative bg-gray-900 border border-gray-800 rounded-lg overflow-hidden shadow-2xl transition-all duration-500
              ${orientation === 'landscape' ? 'aspect-video w-full max-w-4xl' : 'aspect-[9/16] h-[70vh]'}`}>
             {currentUrl ? (
@@ -195,11 +199,8 @@ export default function DubbingStudio() {
             )}
           </div>
 
-          {/* Controls Container */}
           <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col gap-4 w-full max-w-4xl">
-            
             <div className="flex flex-wrap items-center justify-between gap-4">
-               {/* Orientation Toggles */}
                <div className="flex bg-gray-800 rounded-lg p-1">
                  <button
                    onClick={() => setOrientation('landscape')}
@@ -215,21 +216,18 @@ export default function DubbingStudio() {
                  </button>
                </div>
 
-               {/* Download Button */}
-               {currentUrl && (
-                 <a 
-                   href={currentUrl} 
-                   download={`recording-${currentKey}.webm`}
+               {downloadUrls && (
+                 <button 
+                   onClick={handleDownloadAll}
                    className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center gap-2 font-medium transition"
                  >
-                   <Download size={18} /> Save Video
-                 </a>
+                   <Download size={18} /> Download All Versions
+                 </button>
                )}
             </div>
 
             <div className="h-px bg-gray-800 w-full" />
 
-            {/* Version Selectors */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               <button
                 onClick={() => setPreviewVersion('main')}
@@ -242,6 +240,20 @@ export default function DubbingStudio() {
                 <Layout size={16} /> 
                 Main Mix
               </button>
+              
+              {orientation === 'landscape' && (
+                  <button
+                    onClick={() => setPreviewVersion('clean')}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap border transition ${
+                      previewVersion === 'clean' 
+                        ? 'bg-gray-800 border-blue-500 text-blue-400' 
+                        : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500'
+                    }`}
+                  >
+                    <Maximize size={16} /> 
+                    Clean Mix
+                  </button>
+              )}
 
               {Array.from({ length: actorCount }).map((_, i) => (
                 <button
@@ -260,7 +272,6 @@ export default function DubbingStudio() {
                 </button>
               ))}
             </div>
-
           </div>
         </div>
       </div>
@@ -270,7 +281,6 @@ export default function DubbingStudio() {
   // STUDIO VIEW
   return (
     <div className="min-h-screen bg-black text-white flex flex-col overflow-hidden">
-      {/* Countdown Overlay */}
       {countdown !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
            <div className="text-9xl font-black text-white animate-bounce">
@@ -279,7 +289,7 @@ export default function DubbingStudio() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header - No Watermark Button */}
       <Header 
          sourceMode={sourceMode}
          setSourceMode={setSourceMode}
@@ -314,30 +324,19 @@ export default function DubbingStudio() {
                    onTimeUpdate={handleVideoTimeUpdate}
                    onLoadedMetadata={handleVideoLoadedMetadata}
                  />
-                 {/* Floating Watermark Preview */}
-                 {watermarkText && (
-                   <div className="absolute bottom-4 right-4 text-white/50 text-sm font-bold pointer-events-none drop-shadow-md z-10">
-                     {watermarkText}
-                   </div>
+                 {/* Preset Watermark Overlay */}
+                 {watermarkImage && (
+                   <img 
+                      src={watermarkImage} 
+                      alt="Watermark" 
+                      className="absolute top-4 left-4 w-32 object-contain pointer-events-none z-10"
+                   />
                  )}
                </div>
                
                {/* Controls Bar */}
                <div className="border-t border-gray-800 bg-black/90 p-4 flex flex-col gap-4">
                   
-                  {/* Watermark Input */}
-                  <div className="flex items-center gap-3 pb-3 border-b border-gray-800">
-                    <Type size={16} className="text-gray-500" />
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Watermark</span>
-                    <input 
-                      type="text" 
-                      value={watermarkText}
-                      onChange={(e) => setWatermarkText(e.target.value)}
-                      placeholder="Enter watermark text..."
-                      className="bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded px-3 py-1 focus:outline-none focus:border-blue-500 focus:text-white transition w-full"
-                    />
-                  </div>
-
                   {/* Progress Bar Row */}
                   <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
                     <span>{formatTime((videoProgress / 100) * videoDuration)}</span>
@@ -355,10 +354,7 @@ export default function DubbingStudio() {
 
                   {/* Buttons Row (Centered Layout) */}
                   <div className="flex items-center justify-between">
-                      {/* Left Spacer */}
                       <div className="flex-1"></div>
-
-                      {/* Center Controls Group */}
                       <div className="flex items-center gap-6">
                           <button 
                             onClick={() => setIsVideoMuted(!isVideoMuted)}
@@ -395,8 +391,6 @@ export default function DubbingStudio() {
                             </div>
                           )}
                       </div>
-
-                      {/* Right Spacer */}
                       <div className="flex-1"></div>
                   </div>
                </div>
@@ -414,7 +408,6 @@ export default function DubbingStudio() {
              />
           </div>
           
-          {/* Constrain SoundBoard Height: Fixed height (h-56 or h-64) ensures it doesn't push up. */}
           <div className="h-56 border-t border-gray-800 bg-gray-900/50 p-4 shrink-0">
             <SoundBoard 
               audioContext={audioContext} 

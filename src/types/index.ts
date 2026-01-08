@@ -1,7 +1,7 @@
 // src/types/index.ts
 
 export type SourceMode = 'file' | 'stream';
-export type ActorCount = 1 | 2 | 3 | 4;
+export type ActorCount = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface VideoState {
   isPlaying: boolean;
@@ -15,5 +15,6 @@ export interface ActorDeviceConfig {
   [actorIndex: number]: {
     videoDeviceId?: string;
     audioDeviceId?: string;
+    name ?: string;
   };
 }

@@ -20,12 +20,12 @@ export function DeviceSettings({
 }: DeviceSettingsProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleChange = (index: number, type: 'video' | 'audio', deviceId: string) => {
+  const handleChange = (index: number, type: 'video' | 'audio' | 'name', value: string) => {
     setConfig(prev => ({
       ...prev,
       [index]: {
         ...prev[index],
-        [type === 'video' ? 'videoDeviceId' : 'audioDeviceId']: deviceId
+        [type === 'video' ? 'videoDeviceId' : type === 'audio' ? 'audioDeviceId' : 'name']: value
       }
     }));
   };
@@ -43,9 +43,8 @@ export function DeviceSettings({
       </button>
 
       {isOpen && (
-        <div className="absolute top-12 right-0 w-80 bg-gray-900 border border-gray-700 rounded-xl p-4 shadow-xl z-50">
+        <div className="absolute top-12 right-0 w-96 bg-gray-900 border border-gray-700 rounded-xl p-4 shadow-xl z-50">
           <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">Input Sources</h3>
-          
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             {Array.from({ length: actorCount }).map((_, i) => (
               <div key={i} className="space-y-2 p-3 bg-gray-800/50 rounded-lg">
@@ -56,34 +55,52 @@ export function DeviceSettings({
                   <span className="font-medium text-sm">Actor {i + 1}</span>
                 </div>
 
+                {/* Name Input */}
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Name</label>
+                  <input
+                    type="text"
+                    placeholder={`Actor ${i + 1}`}
+                    value={config[i]?.name || ''}
+                    onChange={(e) => handleChange(i, 'name', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:border-blue-500 outline-none placeholder:text-gray-600"
+                  />
+                </div>
+
                 {/* Video Select */}
-                <select
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:border-blue-500 outline-none"
-                  value={config[i]?.videoDeviceId || ""}
-                  onChange={(e) => handleChange(i, 'video', e.target.value)}
-                >
-                  <option value="">Default Camera</option>
-                  <option value="no-video">⛔ No Camera (Audio Only)</option>
-                  {devices.videoInputs.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Cam ${d.deviceId.slice(0,4)}`}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Camera</label>
+                  <select
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:border-blue-500 outline-none"
+                    value={config[i]?.videoDeviceId}
+                    onChange={(e) => handleChange(i, 'video', e.target.value)}
+                  >
+                    <option value="">Default Camera</option>
+                    <option value="no-video">⛔ No Camera (Audio Only)</option>
+                    {devices.videoInputs.map(d => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Cam ${d.deviceId.slice(0,4)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Audio Select */}
-                <select
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:border-blue-500 outline-none"
-                  value={config[i]?.audioDeviceId || ""}
-                  onChange={(e) => handleChange(i, 'audio', e.target.value)}
-                >
-                  <option value="">Default Mic</option>
-                  {devices.audioInputs.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Mic ${d.deviceId.slice(0,4)}`}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Microphone</label>
+                  <select
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:border-blue-500 outline-none"
+                    value={config[i]?.audioDeviceId}
+                    onChange={(e) => handleChange(i, 'audio', e.target.value)}
+                  >
+                    <option value="">Default Mic</option>
+                    {devices.audioInputs.map(d => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Mic ${d.deviceId.slice(0,4)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
           </div>

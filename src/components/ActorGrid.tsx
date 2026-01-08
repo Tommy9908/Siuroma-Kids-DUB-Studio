@@ -30,14 +30,15 @@ export function ActorGrid({ count, isRecording, deviceConfig, webcamRefs }: Acto
     <div className={`grid ${gridClass} gap-4 h-full p-4 overflow-y-auto auto-rows-[1fr]`}>
       {Array.from({ length: count }).map((_, i) => {
         const hasVideo = deviceConfig[i]?.videoDeviceId !== 'no-video';
-        const currentVideoId = deviceConfig[i]?.videoDeviceId; // Get the specific ID
+        const currentVideoId = deviceConfig[i]?.videoDeviceId; 
+        const currentAudioId = deviceConfig[i]?.audioDeviceId;
+        const actorName = deviceConfig[i]?.name || `Actor ${i + 1}`; // Get custom name
 
         return (
           <div key={i} className="relative bg-black rounded-xl overflow-hidden border border-gray-800 group h-full w-full">
             {/* Webcam Component */}
             <Webcam
-              // FIX: Add key to force re-render when device changes
-              key={`${i}-${currentVideoId}`} 
+              key={`${i}-${currentVideoId}-${currentAudioId}`} 
               
               ref={(el: Webcam | null) => {
                 if (webcamRefs.current) {
@@ -51,14 +52,14 @@ export function ActorGrid({ count, isRecording, deviceConfig, webcamRefs }: Acto
               videoConstraints={
                 hasVideo 
                 ? {
-                    deviceId: currentVideoId ? { exact: currentVideoId } : undefined, // More specific constraint
+                    deviceId: currentVideoId ? { exact: currentVideoId } : undefined,
                     width: 1280,
                     height: 720
                   }
                 : false
               }
               audioConstraints={{
-                deviceId: deviceConfig[i]?.audioDeviceId
+                deviceId: currentAudioId ? { exact: currentAudioId } : undefined
               }}
             />
 
@@ -70,7 +71,7 @@ export function ActorGrid({ count, isRecording, deviceConfig, webcamRefs }: Acto
             )}
 
             <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-full text-white text-sm font-bold flex items-center gap-2 backdrop-blur-sm z-10">
-              Actor {i + 1}
+              {actorName}
               {!hasVideo && <span className="text-xs text-gray-400 font-normal border-l border-gray-600 pl-2">Audio Only</span>}
             </div>
 
