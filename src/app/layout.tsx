@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/lib/ThemeContext";
 import "./globals.css"; // Ensure this points to your css file
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
     <html lang="en">
       {/* The body tag is mandatory here */}
       <body className="antialiased bg-gray-950 text-white">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,26 +1,165 @@
 @import "tailwindcss";
 
+/* ========================================
+   Theme System
+   Directly sets --color-* CSS variables.
+   Because these are unlayered, they override
+   Tailwind's @layer base defaults.
+   ======================================== */
+
+/* ---- Default: Blue (matches original Tailwind colors) ---- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-purple-600: #9333ea;
+}
+
+/* ---- Purple ---- */
+[data-theme="purple"] {
+  --color-gray-50: #faf8fc;
+  --color-gray-100: #f3eff7;
+  --color-gray-200: #e5ddef;
+  --color-gray-300: #cfc2de;
+  --color-gray-400: #9a89b5;
+  --color-gray-500: #6b5b82;
+  --color-gray-600: #4f4263;
+  --color-gray-700: #382d4a;
+  --color-gray-800: #231b33;
+  --color-gray-900: #161024;
+  --color-gray-950: #0c0718;
+  --color-blue-400: #a78bfa;
+  --color-blue-500: #8b5cf6;
+  --color-blue-600: #7c3aed;
+  --color-blue-700: #6d28d9;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-purple-600: #a855f7;
+}
+
+/* ---- Pink ---- */
+[data-theme="pink"] {
+  --color-gray-50: #fcf8fa;
+  --color-gray-100: #f7eff3;
+  --color-gray-200: #edd6e1;
+  --color-gray-300: #deb3c6;
+  --color-gray-400: #b57d98;
+  --color-gray-500: #82506a;
+  --color-gray-600: #63344d;
+  --color-gray-700: #4a2538;
+  --color-gray-800: #331a28;
+  --color-gray-900: #24101c;
+  --color-gray-950: #1a0814;
+  --color-blue-400: #f472b6;
+  --color-blue-500: #ec4899;
+  --color-blue-600: #db2777;
+  --color-blue-700: #be185d;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-purple-600: #f472b6;
+}
+
+/* ---- Emerald ---- */
+[data-theme="emerald"] {
+  --color-gray-50: #f7fcf9;
+  --color-gray-100: #edf7f2;
+  --color-gray-200: #d4ede0;
+  --color-gray-300: #b2dac5;
+  --color-gray-400: #6ba68a;
+  --color-gray-500: #4a7a63;
+  --color-gray-600: #355c4a;
+  --color-gray-700: #244235;
+  --color-gray-800: #152e23;
+  --color-gray-900: #0c2017;
+  --color-gray-950: #05140d;
+  --color-blue-400: #34d399;
+  --color-blue-500: #10b981;
+  --color-blue-600: #059669;
+  --color-blue-700: #047857;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-green-500: #10b981;
+  --color-green-600: #059669;
+  --color-purple-600: #14b8a6;
+}
+
+/* ---- Rose ---- */
+[data-theme="rose"] {
+  --color-gray-50: #fcf8f8;
+  --color-gray-100: #f7efef;
+  --color-gray-200: #edd6d7;
+  --color-gray-300: #deb3b5;
+  --color-gray-400: #b57f82;
+  --color-gray-500: #82585b;
+  --color-gray-600: #634043;
+  --color-gray-700: #4a2c2f;
+  --color-gray-800: #331b1e;
+  --color-gray-900: #241012;
+  --color-gray-950: #18080a;
+  --color-blue-400: #fb7185;
+  --color-blue-500: #f43f5e;
+  --color-blue-600: #e11d48;
+  --color-blue-700: #be123c;
+  --color-red-500: #f43f5e;
+  --color-red-600: #e11d48;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-purple-600: #e11d48;
+}
+
+/* ---- Midnight ---- */
+[data-theme="midnight"] {
+  --color-gray-50: #f7f9fc;
+  --color-gray-100: #edf2f7;
+  --color-gray-200: #d4e0ed;
+  --color-gray-300: #b0c4de;
+  --color-gray-400: #6b90b5;
+  --color-gray-500: #4a6982;
+  --color-gray-600: #354e63;
+  --color-gray-700: #24374a;
+  --color-gray-800: #152433;
+  --color-gray-900: #0c1824;
+  --color-gray-950: #050e18;
+  --color-blue-400: #22d3ee;
+  --color-blue-500: #06b6d4;
+  --color-blue-600: #0891b2;
+  --color-blue-700: #0e7490;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-green-500: #22d3ee;
+  --color-green-600: #06b6d4;
+  --color-purple-600: #6366f1;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--background, #0a0a0a);
+  --color-foreground: var(--foreground, #ededed);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--background, #0a0a0a);
+  color: var(--foreground, #ededed);
   font-family: Arial, Helvetica, sans-serif;
 }
